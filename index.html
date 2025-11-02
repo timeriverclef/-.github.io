@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>时光茶馆 · 代际交流（可直接运行）</title>
+  <meta name="description" content="生活交流区、经验分享区、学习互助区、故事与记忆区、共创活动区；支持语音占位、每日话题、提问卡、经验之星、教学贴、故事录音、积分/勋章、兴趣结对、数字教室、线下安全须知等。">
+  <!-- TailwindCSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // （可选）保障动态类名在 CDN JIT 下可用的 safelist（覆盖常用颜色）
+    tailwind.config = {
+      safelist: [
+        'bg-indigo-50','bg-amber-50','bg-emerald-50','bg-violet-50','bg-sky-50','bg-yellow-50',
+        'border-indigo-200','border-amber-100','border-emerald-300','border-violet-300','border-sky-300',
+        'bg-indigo-600','text-white','border-indigo-600'
+      ]
+    }
+  </script>
+  <!-- React 18 UMD & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone (允许在浏览器中直接写 JSX) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Framer Motion UMD（可选），若加载失败会使用降级包装 -->
+  <script src="https://unpkg.com/framer-motion/dist/framer-motion.umd.js"></script>
+  <style>
+    html,body{background:#f8fafc}
+  </style>
+</head>
+<body class="min-h-screen">
+  <div id="root"></div>
+  <noscript class="block p-4 text-center text-red-700">需要浏览器开启 JavaScript 才能运行此界面。</noscript>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    // ====== 动画支持（若 framer-motion UMD 存在则使用，否则优雅降级） ======
+    const FM = window['framer-motion'];
+    const motion = FM ? FM.motion : new Proxy({}, { get: () => (props) => <div {...props} /> });
+    const AnimatePresence = FM ? FM.AnimatePresence : ({ children }) => <>{children}</>;
+
+    // ====== 小图标：用 emoji 代替（无第三方依赖） ======
+    const Ico = ({ ch, className = '', label = '' }) => (
+      <span role="img" aria-label={label} className={className} style={{lineHeight:1}}>{ch}</span>
+    );
+
+    const SearchIcon = (p)=> <Ico ch="🔍" {...p}/>;
+    const MicIcon = (p)=> <Ico ch="🎙️" {...p}/>;
+    const StopIcon = (p)=> <Ico ch="⏹️" {...p}/>;
+    const ShieldIcon = (p)=> <Ico ch="🛡️" {...p}/>;
+    const UsersIcon = (p)=> <Ico ch="👥" {...p}/>;
+    const SparklesIcon = (p)=> <Ico ch="✨" {...p}/>;
+    const ChevronRightIcon = (p)=> <Ico ch="›" {...p}/>;
+    const FilterIcon = (p)=> <Ico ch="🧰" {...p}/>;
+    const HeartIcon = (p)=> <Ico ch="❤️" {...p}/>;
+    const BookmarkIcon = (p)=> <Ico ch="🔖" {...p}/>;
+    const MessageIcon = (p)=> <Ico ch="💬" {...p}/>;
+    const BookOpenIcon = (p)=> <Ico ch="📘" {...p}/>;
+    const MusicIcon = (p)=> <Ico ch="🎵" {...p}/>;
+    const FlowerIcon = (p)=> <Ico ch="🌸" {...p}/>;
+    const CalendarIcon = (p)=> <Ico ch="📅" {...p}/>;
+
+    // ====== 常量数据 ======
+    const MAIN_BOARDS = {
+      '生活交流区': ['全部','每日闲聊','兴趣角落','怀旧与新潮'],
+      '经验分享区': ['全部','职场与人生建议','婚恋与家庭','生活理财小妙招'],
+      '学习互助区': ['全部','数码课堂','老手艺馆','知识互助'],
+      '故事与记忆区': ['全部','我的年代','成长树洞','家族记忆'],
+      '共创活动区': ['全部','跨代对话周','主题共创','数字互助日'],
+    };
+    const DAILY_TOPICS = [
+      { text: '今天最让你开心/烦恼的一件小事？', main:'生活交流区', sub:'每日闲聊' },
+      { text: '晒一张家常菜，讲讲背后的小故事。', main:'生活交流区', sub:'兴趣角落' },
+      { text: '分享一首让你“穿越时空”的老歌/新曲。', main:'生活交流区', sub:'怀旧与新潮' },
+    ];
+    const needMap = { ask_guidance:'求指导', offer_guidance:'提供指导', seek_companionship:'求陪伴', offer_companionship:'提供陪伴' };
+
+    const INIT_POSTS = [
+      {id:'a1',type:'normal',main:'生活交流区',sub:'每日闲聊',name:'王阿姨',role:'senior',city:'上海',need:'offer_companionship',title:'早安，今天阳光刚好，一起云散步吗？',body:'晚上 7-8 点可聊天，聊花草、做菜，也愿意听你吐槽。',tags:['陪伴','园艺'],thanks:12,stars:4,time:'2025-10-28T19:00:00'},
+      {id:'a2',type:'normal',main:'生活交流区',sub:'兴趣角落',name:'Cora',role:'youth',city:'上海',need:'offer_companionship',title:'午休视频陪外婆吃饭＋设置常用联系人',body:'可帮设置一键拨号，欢迎长辈来试试。',tags:['陪伴','数码'],thanks:11,stars:3,time:'2025-10-28T12:30:00'},
+      {id:'a3',type:'normal',main:'生活交流区',sub:'怀旧与新潮',name:'陈爷爷',role:'senior',city:'南京',need:'offer_companionship',title:'老歌《童年》＋孙女教的拍照构图',body:'老与新相遇，欢迎互相推荐歌曲～',tags:['音乐','摄影'],thanks:9,stars:2,time:'2025-10-20T20:10:00'},
+      {id:'b1',type:'question_card',main:'经验分享区',sub:'职场与人生建议',name:'李想',role:'youth',city:'成都',need:'ask_guidance',title:'第一次与年长同事合作，沟通有技巧吗？',body:'求不冒犯又高效的沟通建议。',tags:['职场','沟通'],thanks:21,stars:8,time:'2025-10-31T09:30:00',accepted:false},
+      {id:'b2',type:'normal',main:'经验分享区',sub:'生活理财小妙招',name:'赵叔',role:'senior',city:'北京',need:'offer_guidance',title:'提前还贷还是投资？给年轻人的家庭理财三步走',body:'做了 30 年银行，谈风险分级与资产配置。',tags:['理财','家庭'],thanks:45,stars:15,time:'2025-10-25T13:00:00',expert:true},
+      {id:'b3',type:'normal',main:'经验分享区',sub:'婚恋与家庭',name:'刘阿姨',role:'senior',city:'厦门',need:'offer_guidance',title:'婚姻里“有效倾听”的 3 个小练习',body:'从情绪命名到复述确认，再到共同决策。',tags:['婚恋','家庭'],thanks:28,stars:10,time:'2025-10-22T15:22:00'},
+      {id:'c1',type:'lesson',main:'学习互助区',sub:'数码课堂',name:'Annie',role:'youth',city:'深圳',need:'offer_guidance',title:'给奶奶换智能机：一键上手清单（图文）',body:'字体/图标/常用联系人/诈骗拦截/视频通话',tags:['数码','适老化'],thanks:26,stars:10,time:'2025-10-29T10:10:00'},
+      {id:'c2',type:'lesson',main:'学习互助区',sub:'老手艺馆',name:'陈爷爷',role:'senior',city:'南京',need:'offer_guidance',title:'竹编入门：三种常见编法（短视频）',body:'家庭安全处理竹篾与练习建议。',tags:['手作','非遗'],thanks:33,stars:20,time:'2025-09-18T08:30:00'},
+      {id:'c3',type:'lesson',main:'学习互助区',sub:'知识互助',name:'Liu',role:'youth',city:'杭州',need:'ask_guidance',title:'AI 工具怎么帮父母整理家庭账本？',body:'求表格模板与自动分类思路。',tags:['AI','理财'],thanks:14,stars:5,time:'2025-10-30T09:00:00'},
+      {id:'d1',type:'story_audio',main:'故事与记忆区',sub:'我的年代',name:'张老师',role:'senior',city:'广州',need:'offer_guidance',title:'那年支教：一封没有寄出的信（录音）',body:'自动转写片段：那时山路十八弯……',tags:['故事','教育'],thanks:52,stars:29,time:'2025-10-19T11:15:00',voice:true},
+      {id:'d2',type:'normal',main:'故事与记忆区',sub:'家族记忆',name:'Neo',role:'youth',city:'长沙',need:'seek_companionship',title:'外公的黑白相册，欢迎长辈帮我补全地名',body:'想把家族记忆做成时间线。',tags:['记忆','照片'],thanks:17,stars:5,time:'2025-10-20T20:05:00'},
+      {id:'e1',type:'activity',main:'共创活动区',sub:'跨代对话周',name:'社群小助手',role:'youth',city:'线上',need:'offer_companionship',title:'第 12 期跨代对话周 · 报名配对',body:'互访彼此的生活故事，本周共 20 个配对名额。',tags:['活动','配对'],thanks:6,stars:7,time:'2025-10-30T09:00:00',joined:false},
+      {id:'e2',type:'activity',main:'共创活动区',sub:'数字互助日',name:'社群小助手',role:'youth',city:'上海',need:'offer_guidance',title:'数字互助日 · 青年帮忙设置手机换积分',body:'报名点：徐家汇社区服务中心（周六上午）',tags:['活动','线下'],thanks:3,stars:2,time:'2025-10-27T09:40:00',joined:false},
+    ];
+
+    const initials = (name)=> name.replace(/[^\u4e00-\u9fa5a-zA-Z]/g,'').slice(0,2).toUpperCase() || '友';
+    const fmtTime = (iso)=>{ const d=new Date(iso); const pad=(n)=> String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}` };
+
+    // ================= 主组件 =================
+    function App(){
+      const [activeMain, setActiveMain] = useState('生活交流区');
+      const [activeSub, setActiveSub] = useState('全部');
+      const [query, setQuery] = useState('');
+      const [onlySenior, setOnlySenior] = useState(false);
+      const [onlyYouth, setOnlyYouth] = useState(false);
+      const [onlyComp, setOnlyComp] = useState(false);
+      const [onlyGuide, setOnlyGuide] = useState(false);
+
+      const [posts, setPosts] = useState(INIT_POSTS);
+      const [thanked, setThanked] = useState(new Set(JSON.parse(localStorage.getItem('thanked')||'[]')));
+      const [starred, setStarred] = useState(new Set(JSON.parse(localStorage.getItem('starred')||'[]')));
+
+      const [myPoints, setMyPoints] = useState(Number(localStorage.getItem('myPoints')||0));
+      const [myBadges, setMyBadges] = useState(JSON.parse(localStorage.getItem('myBadges')||'[]'));
+      const [classroom, setClassroom] = useState(JSON.parse(localStorage.getItem('classroom')||'[]'));
+
+      // 模态
+      const [openCompose, setOpenCompose] = useState(false);
+      const [openPair, setOpenPair] = useState(false);
+      const [openTask, setOpenTask] = useState(false);
+      const [openSafety, setOpenSafety] = useState(false);
+      const [openClassroom, setOpenClassroom] = useState(false);
+      const [openReport, setOpenReport] = useState(false);
+
+      // 发帖表单
+      const [form, setForm] = useState({ role:'youth', postType:'normal', main:'生活交流区', sub:'每日闲聊', city:'', intent:'ask_guidance', title:'', content:'', tags:'', attachments:[] });
+
+      // 语音占位
+      const [recording, setRecording] = useState(false);
+      const [recordSec, setRecordSec] = useState(0);
+      useEffect(()=>{ let id=null; if(recording) id=setInterval(()=> setRecordSec(s=>s+1), 1000); return ()=> id&&clearInterval(id); },[recording]);
+
+      // 监听自定义举报打开事件
+      useEffect(()=>{ const fn = ()=> setOpenReport(true); window.addEventListener('open-report', fn); return ()=> window.removeEventListener('open-report', fn); },[]);
+
+      // 过滤
+      const filtered = useMemo(()=>{
+        let list = posts.filter(p=> p.main===activeMain);
+        if(activeSub!=='全部') list = list.filter(p=> p.sub===activeSub);
+        const q = query.trim().toLowerCase();
+        if(q){ list = list.filter(p=> p.title.toLowerCase().includes(q) || p.body.toLowerCase().includes(q) || (p.tags||[]).join(',').toLowerCase().includes(q) || (p.city||'').toLowerCase().includes(q)); }
+        if(onlySenior && !onlyYouth) list = list.filter(p=> p.role==='senior');
+        else if(onlyYouth && !onlySenior) list = list.filter(p=> p.role==='youth');
+        if(onlyComp && !onlyGuide) list = list.filter(p=> p.need.includes('companionship') || p.sub==='每日闲聊');
+        else if(onlyGuide && !onlyComp) list = list.filter(p=> p.need.includes('guidance') || p.type==='question_card' || p.type==='lesson');
+        return list.sort((a,b)=> new Date(b.time)-new Date(a.time));
+      }, [posts, activeMain, activeSub, query, onlySenior, onlyYouth, onlyComp, onlyGuide]);
+
+      // 勋章
+      useEffect(()=>{
+        const badges=[]; if(myPoints>=5) badges.push('青春助力'); if(myPoints>=15) badges.push('暖心导师'); if(myPoints>=30) badges.push('跨代桥梁');
+        setMyBadges(badges); localStorage.setItem('myPoints', String(myPoints)); localStorage.setItem('myBadges', JSON.stringify(badges));
+      }, [myPoints]);
+
+      const addPoints = (n)=> setMyPoints(p=> p+n);
+
+      const handleAction = (id, action)=> {
+        setPosts(prev=>{
+          const next = prev.map(p=> ({...p}));
+          const idx = next.findIndex(x=> x.id===id); if(idx===-1) return prev;
+          const p = next[idx];
+          if(action==='thank'){
+            if(!thanked.has(id)){
+              p.thanks = (p.thanks||0)+1; const t = new Set(thanked); t.add(id); setThanked(t); localStorage.setItem('thanked', JSON.stringify(Array.from(t))); addPoints(1);
+            }
+          }
+          if(action==='star'){
+            const s = new Set(starred); if(s.has(id)){ s.delete(id); p.stars=Math.max(0,(p.stars||0)-1); } else { s.add(id); p.stars=(p.stars||0)+1; addPoints(1);} setStarred(s); localStorage.setItem('starred', JSON.stringify(Array.from(s)));
+          }
+          if(action==='want-answer'){ alert('已记录你想回答此提问卡（示意）。'); addPoints(1); }
+          if(action==='accept'){ if(!p.accepted){ p.accepted=true; addPoints(2);} }
+          if(action==='to-classroom'){
+            const item = { title:p.title, summary:p.body.slice(0,120)+'…', tags:p.tags||[] };
+            const list = [item, ...classroom]; setClassroom(list); localStorage.setItem('classroom', JSON.stringify(list)); alert('已沉淀到数字教室！'); addPoints(1);
+          }
+          if(action==='join'){ p.joined = !p.joined; if(p.joined) addPoints(1); }
+          if(action==='checkin'){ alert('签到成功（示意）'); addPoints(1); }
+          return next;
+        });
+      };
+
+      const openComposePrefill = (pref={})=>{
+        setForm(f=>({
+          ...f,
+          role: pref.role || 'youth',
+          postType: pref.type || 'normal',
+          main: pref.main || activeMain,
+          sub: pref.sub || (MAIN_BOARDS[pref.main || activeMain]?.[1] || '全部'),
+          intent: pref.intent || 'ask_guidance',
+          title: pref.title || '',
+          content: pref.body || '',
+          city: pref.city || '',
+          tags: (pref.tags||[]).join(','),
+          attachments: [],
+        }));
+        setOpenCompose(true);
+      };
+
+      const TopWidgets = ()=>{
+        const wrapCls = 'rounded-2xl border bg-gradient-to-br from-indigo-50 to-white p-4 shadow-sm';
+        const idx = (new Date().getDate()) % DAILY_TOPICS.length;
+        return (
+          <div className="space-y-3">
+            {activeMain==='生活交流区' && (
+              <div className={wrapCls}>
+                <div className="flex items-center gap-2 text-indigo-700 font-semibold">🌞 每日话题引导</div>
+                <div className="mt-1 text-sm text-gray-700">{DAILY_TOPICS[idx].text}</div>
+                <div className="mt-3 flex items-center gap-2">
+                  <button className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm" onClick={()=> openComposePrefill({ main:DAILY_TOPICS[idx].main, sub:DAILY_TOPICS[idx].sub, type:'normal', role:'senior', intent:'offer_companionship', title:`【每日话题】${DAILY_TOPICS[idx].text}`, body:'' })}>写回应</button>
+                  <span className="text-xs text-gray-500">系统发起 · {DAILY_TOPICS[idx].sub}</span>
+                </div>
+              </div>
+            )}
+
+            {activeMain==='经验分享区' && (
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className={wrapCls}>
+                  <div className="flex items-center gap-2 text-amber-700 font-semibold">🏅 经验之星</div>
+                  <div className="mt-2 grid gap-2">
+                    {posts.filter(p=>p.main==='经验分享区' && p.role==='senior').sort((a,b)=>b.thanks-a.thanks).slice(0,3).map(t=> (
+                      <div key={t.id} className="rounded-xl border bg-white p-3">
+                        <div className="text-sm font-medium">{t.name} <span className="ml-2 rounded-full bg-amber-50 text-amber-700 text-[11px] px-2 py-0.5">经验之星</span></div>
+                        <div className="mt-1 text-xs text-gray-500 line-clamp-1">{t.title}</div>
+                        <div className="mt-1 text-[11px] text-gray-400">感谢 {t.thanks}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className={wrapCls}>
+                  <div className="flex items-center gap-2 text-fuchsia-700 font-semibold">📝 青年提问卡</div>
+                  <div className="mt-1 text-sm text-gray-700">青年发布提问卡，长辈点击「想回答」</div>
+                  <button onClick={()=> openComposePrefill({ main:'经验分享区', sub:'职场与人生建议', type:'question_card', role:'youth', intent:'ask_guidance' })} className="mt-3 px-3 py-1.5 rounded-lg bg-fuchsia-600 text-white text-sm">发提问卡</button>
+                </div>
+              </div>
+            )}
+
+            {activeMain==='学习互助区' && (
+              <div className={wrapCls}>
+                <div className="flex items-center gap-2 text-emerald-700 font-semibold">✨ 每周互教挑战</div>
+                <div className="mt-1 text-sm text-gray-700">本周：「我教你拍照，你教我修图」</div>
+                <button className="mt-3 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm" onClick={()=> setOpenTask(true)}>我来参加</button>
+              </div>
+            )}
+
+            {activeMain==='故事与记忆区' && (
+              <div className={wrapCls}>
+                <div className="flex items-center gap-2 text-violet-700 font-semibold">📜 温情故事 Top10</div>
+                <div className="mt-1 text-sm text-gray-700">每月评选 · 自动汇总感谢值</div>
+              </div>
+            )}
+
+            {activeMain==='共创活动区' && (
+              <div className={wrapCls}>
+                <div className="flex items-center gap-2 text-sky-700 font-semibold">🛡️ 活动安全提示</div>
+                <div className="mt-1 text-sm text-gray-700">报名需阅读安全须知并完成签到留痕</div>
+                <button className="mt-3 px-3 py-1.5 rounded-lg bg-sky-600 text-white text-sm" onClick={()=> setOpenSafety(true)}>查看安全须知</button>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6 text-gray-800">
+          {/* Header */}
+          <header className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 via-fuchsia-500 to-amber-400 grid place-items-center text-white font-bold text-lg shadow-md">桥</div>
+                <div className="absolute -bottom-1 -right-1 rounded-full bg-white shadow px-2 py-0.5 text-[11px] text-gray-600">Beta</div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold">时光茶馆 — 代际交流</h1>
+                <p className="text-sm text-gray-500">让陪伴与经验流动 · 设计原型</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <input className="pl-9 pr-3 py-2 rounded-xl border w-64 text-sm focus:ring-2 ring-indigo-200 outline-none" placeholder="搜索话题/用户" value={query} onChange={(e)=>setQuery(e.target.value)} />
+                <span className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"><SearchIcon/></span>
+              </div>
+              <button className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm shadow hover:brightness-110" onClick={()=> openComposePrefill({ main: activeMain, sub: MAIN_BOARDS[activeMain]?.[1] || '全部' })}>创建话题</button>
+            </div>
+          </header>
+
+          <div className="grid grid-cols-12 gap-6">
+            {/* Sidebar */}
+            <aside className="col-span-12 md:col-span-3 space-y-4">
+              <div className="bg-white rounded-2xl p-4 shadow-sm border">
+                <nav className="flex flex-col gap-2">
+                  {Object.keys(MAIN_BOARDS).map((key)=> (
+                    <button key={key} onClick={()=>{ setActiveMain(key); setActiveSub('全部'); }} className={`text-left p-3 rounded-xl transition-all border ${activeMain===key ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'hover:bg-gray-50 border-gray-200'}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium flex items-center gap-2">
+                            { key==='生活交流区' && <FlowerIcon/> }
+                            { key==='经验分享区' && <BookOpenIcon/> }
+                            { key==='学习互助区' && <SparklesIcon/> }
+                            { key==='故事与记忆区' && <MusicIcon/> }
+                            { key==='共创活动区' && <CalendarIcon/> }
+                            {key}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            { key==='生活交流区' && '日常闲聊·兴趣分享·语音留言' }
+                            { key==='经验分享区' && '职场与人生·婚恋家庭·理财建议' }
+                            { key==='学习互助区' && '数码课堂·老手艺·知识互助' }
+                            { key==='故事与记忆区' && '口述历史·温情故事·家族记忆' }
+                            { key==='共创活动区' && '跨代对话·主题共创·数字互助日' }
+                          </div>
+                        </div>
+                        <span className="text-gray-400 text-sm"><ChevronRightIcon/></span>
+                      </div>
+                    </button>
+                  ))}
+                </nav>
+
+                <div className="mt-6 text-sm text-gray-600">
+                  <div className="font-medium mb-2">今日活动</div>
+                  <ul className="space-y-2">
+                    <li className="p-2 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700">数字互助日 — 14:00</li>
+                    <li className="p-2 rounded-lg bg-amber-50 border border-amber-100 text-amber-700">跨代对话周报名中</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 shadow-sm border">
+                <div className="text-sm font-medium">兴趣结对</div>
+                <p className="text-xs text-gray-500 mt-1">技能 × 兴趣（如“书法 × 海报设计”）</p>
+                <div className="mt-3 flex gap-2">
+                  <button className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm" onClick={()=> setOpenPair(true)}><UsersIcon/> 结对</button>
+                  <button className="px-3 py-1.5 rounded-lg border text-sm" onClick={()=> setOpenTask(true)}><SparklesIcon/> 每周任务卡</button>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 shadow-sm border">
+                <div className="text-sm font-medium">常用筛选</div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={onlySenior} onChange={(e)=> setOnlySenior(e.target.checked)} />只看长辈</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={onlyYouth} onChange={(e)=> setOnlyYouth(e.target.checked)} />只看青年</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={onlyComp} onChange={(e)=> setOnlyComp(e.target.checked)} />只看陪伴</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={onlyGuide} onChange={(e)=> setOnlyGuide(e.target.checked)} />只看指导</label>
+                </div>
+                <p className="text-xs text-gray-500 mt-3"><ShieldIcon/> 线下请遵循安全须知；私信谨慎交易。</p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 shadow-sm border">
+                <div className="text-sm font-medium">我的成长</div>
+                <div className="mt-2 flex items-center gap-2"><span className="text-xs text-gray-500">积分</span><span className="text-lg font-semibold">{myPoints}</span></div>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  { myBadges.length ? myBadges.map(b=> <span key={b} className="px-2 py-0.5 rounded-full bg-gray-100">{b}</span>) : <span className="text-gray-400">暂无勋章</span> }
+                </div>
+              </div>
+            </aside>
+
+            {/* Main */}
+            <main className="col-span-12 md:col-span-6">
+              <section className="rounded-2xl border bg-white p-6 shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold">{activeMain}</h2>
+                    <p className="text-sm text-gray-500">
+                      { activeMain==='生活交流区' && '日常闲聊·兴趣分享·语音留言' }
+                      { activeMain==='经验分享区' && '职场与人生·婚恋家庭·理财建议' }
+                      { activeMain==='学习互助区' && '数码课堂·老手艺·知识互助' }
+                      { activeMain==='故事与记忆区' && '口述历史·温情故事·家族记忆' }
+                      { activeMain==='共创活动区' && '跨代对话·主题共创·数字互助日' }
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <VoiceButton recording={recording} setRecording={setRecording} recordSec={recordSec} />
+                    <button className="px-3 py-1.5 rounded-lg border text-sm"><FilterIcon/> 筛选</button>
+                  </div>
+                </div>
+
+                {/* 子话题 */}
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {(MAIN_BOARDS[activeMain]||[]).map((sub)=> (
+                    <button key={sub} onClick={()=> setActiveSub(sub)} className={`px-3 py-1.5 rounded-full text-xs border ${activeSub===sub? 'bg-indigo-600 text-white border-indigo-600':'hover:bg-gray-50'}`}>{sub}</button>
+                  ))}
+                </div>
+
+                {/* 顶部挂件 */}
+                <div className="mt-4"><TopWidgets/></div>
+
+                {/* 帖子流 */}
+                <div className="mt-6 grid gap-4">
+                  <AnimatePresence mode="popLayout">
+                    {filtered.map(p=> (
+                      <motion.div key={p.id} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}} transition={{duration:.25}}>
+                        <PostCard p={p} thanked={thanked} starred={starred} onAction={handleAction} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+
+                  {!filtered.length && (
+                    <div className="rounded-xl border p-6 text-sm text-gray-500 bg-gray-50">
+                      暂无内容。试试修改筛选，或 <button className="text-indigo-600 underline" onClick={()=> openComposePrefill({ main:activeMain, sub:activeSub })}>去发一帖</button>。
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <InfoCard title="每周主题" content="本周：数码互助 · 我教你拍照，你教我修图" />
+                  <InfoCard title="热门话题" content="怀旧音乐、家庭理财、智能手机入门" />
+                  <InfoCard title="配对推荐" content="为你推荐：李奶奶（书法爱好者）" />
+                </div>
+              </section>
+            </main>
+
+            {/* Right */}
+            <aside className="col-span-12 md:col-span-3 space-y-4">
+              <div className="rounded-2xl border bg-white p-4 shadow-sm">
+                <h3 className="text-sm font-medium">新手指引</h3>
+                <ol className="mt-3 text-sm text-gray-600 list-decimal list-inside space-y-1">
+                  <li>完善个人资料，添加兴趣标签</li>
+                  <li>开启语音功能（适合长辈）</li>
+                  <li>每周参与一次互教活动</li>
+                </ol>
+              </div>
+
+              <div className="rounded-2xl border bg-white p-4 shadow-sm">
+                <h3 className="text-sm font-medium">奖励与徽章</h3>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  <span className="px-3 py-1 rounded-full bg-gray-100">暖心导师</span>
+                  <span className="px-3 py-1 rounded-full bg-gray-100">数字小能手</span>
+                  <span className="px-3 py-1 rounded-full bg-gray-100">跨代之星</span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border bg-white p-4 shadow-sm">
+                <h3 className="text-sm font-medium">示意小组件</h3>
+                <div className="mt-3"><MiniChat sampleCount={3} /></div>
+              </div>
+
+              <div className="rounded-2xl border bg-white p-4 shadow-sm">
+                <h3 className="text-sm font-medium">数字教室</h3>
+                <p className="text-xs text-gray-500 mt-1">高赞问答沉淀为结构化教程</p>
+                <button className="mt-3 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-sm" onClick={()=> setOpenClassroom(true)}><BookOpenIcon/> 打开</button>
+              </div>
+            </aside>
+          </div>
+
+          <footer className="mt-8 text-center text-sm text-gray-400">© 时光茶馆 示意界面 — 仅为原型设计</footer>
+
+          {/* ===== Modals ===== */}
+          <Modal open={openCompose} onClose={()=> setOpenCompose(false)} title="发布内容">
+            <div className="grid gap-3">
+              <div className="grid md:grid-cols-2 gap-3">
+                <Field label="身份">
+                  <select className="w-full px-3 py-2 rounded-lg border" value={form.role} onChange={e=> setForm({...form, role:e.target.value})}>
+                    <option value="youth">青年</option>
+                    <option value="senior">长辈</option>
+                  </select>
+                </Field>
+                <Field label="发布类型">
+                  <select className="w-full px-3 py-2 rounded-lg border" value={form.postType} onChange={e=> setForm({...form, postType:e.target.value})}>
+                    <option value="normal">普通帖子</option>
+                    <option value="question_card">提问卡（青年）</option>
+                    <option value="lesson">教学贴（图文/短视频）</option>
+                    <option value="story_audio">故事录音（自动转写）</option>
+                    <option value="activity">活动（报名/签到）</option>
+                  </select>
+                </Field>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-3">
+                <Field label="大板块">
+                  <select className="w-full px-3 py-2 rounded-lg border" value={form.main} onChange={e=>{ const m=e.target.value; setForm({...form, main:m, sub: MAIN_BOARDS[m][1]||'全部'}); }}>
+                    {Object.keys(MAIN_BOARDS).map(k=> <option key={k}>{k}</option>)}
+                  </select>
+                </Field>
+                <Field label="子话题">
+                  <select className="w-full px-3 py-2 rounded-lg border" value={form.sub} onChange={e=> setForm({...form, sub:e.target.value})}>
+                    {(MAIN_BOARDS[form.main]||[]).map(s=> <option key={s}>{s}</option>)}
+                  </select>
+                </Field>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-3">
+                <Field label="城市（选填）"><input className="w-full px-3 py-2 rounded-lg border" placeholder="如：上海 / 成都" value={form.city} onChange={e=> setForm({...form, city:e.target.value})} /></Field>
+                <Field label="交流意图">
+                  <select className="w-full px-3 py-2 rounded-lg border" value={form.intent} onChange={e=> setForm({...form, intent:e.target.value})}>
+                    <option value="ask_guidance">求指导</option>
+                    <option value="offer_guidance">提供指导</option>
+                    <option value="seek_companionship">求陪伴</option>
+                    <option value="offer_companionship">提供陪伴</option>
+                  </select>
+                </Field>
+              </div>
+
+              <Field label="标题"><input className="w-full px-3 py-2 rounded-lg border" placeholder="一句话说清你的主题" value={form.title} onChange={e=> setForm({...form, title:e.target.value})} /></Field>
+              <Field label="正文"><textarea className="w-full px-3 py-2 rounded-lg border min-h-[120px]" placeholder="要聊/要教/要问的是什么？希望什么时候交流？是否可语音/视频？" value={form.content} onChange={e=> setForm({...form, content:e.target.value})} /></Field>
+
+              <div className="grid md:grid-cols-2 gap-3">
+                <Field label="标签（逗号分隔）"><input className="w-full px-3 py-2 rounded-lg border" placeholder="如：手机, 防诈骗, 书法" value={form.tags} onChange={e=> setForm({...form, tags:e.target.value})} /></Field>
+                <Field label="图片/短视频">
+                  <label className="block">
+                    <input type="file" multiple accept="image/*,video/*" className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-gray-900 file:text-white" onChange={(e)=> setForm({...form, attachments: Array.from(e.target.files||[])})} />
+                  </label>
+                  {!!form.attachments.length && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {form.attachments.map((f,i)=> <span key={i} className="px-2 py-1 bg-gray-100 rounded-md text-xs">{f.type.startsWith('video/')?'🎞️':'🖼️'} {f.name}</span>)}
+                    </div>
+                  )}
+                </Field>
+              </div>
+
+              {/* 语音发布占位 */}
+              <div className="rounded-xl border p-3 bg-gray-50">
+                <div className="text-sm font-medium">语音发布（占位）</div>
+                <div className="mt-2 flex items-center gap-3">
+                  <button onClick={()=> setRecording(r=>!r)} type="button" className={`px-3 py-2 rounded-lg flex items-center gap-2 ${recording? 'bg-red-500 text-white':'border'}`}>
+                    {recording ? <StopIcon/> : <MicIcon/>}
+                    <span className="text-sm">{recording? '停止录音' : '开始录音'}</span>
+                  </button>
+                  <button type="button" disabled={!recordSec} onClick={()=>{ setForm({...form, content: `${form.content}\n（自动转写占位）本段录音约 ${recordSec} 秒：\n1）……\n2）……\n`}); addPoints(1); }} className={`px-3 py-2 rounded-lg text-sm ${recordSec? 'bg-indigo-600 text-white':'border text-gray-400'}`}>自动转写到正文</button>
+                  <div className="text-xs text-gray-500">{recording? `录制中 ${recordSec}s` : (recordSec? `录音完成 ${recordSec}s` : '支持语音+转写')}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="px-3 py-2 rounded-lg border" onClick={()=> setOpenCompose(false)}>取消</button>
+              <button className="px-3 py-2 rounded-lg bg-indigo-600 text-white" onClick={()=>{
+                if(!form.title || !form.content){ alert('请填写标题与正文'); return; }
+                const p = { id:'p'+Date.now(), type:form.postType, main:form.main, sub:form.sub, name: form.role==='senior'?'热心长辈':'热心青年', role:form.role, city:form.city||'线上', need:form.intent, title:form.title.trim(), body:form.content.trim(), tags: form.tags.split(',').map(s=>s.trim()).filter(Boolean), thanks:0, stars:0, time:new Date().toISOString(), accepted:false, expert:false, joined:false };
+                setPosts(prev=> [p, ...prev]); setOpenCompose(false); addPoints(5);
+              }}>发布</button>
+            </div>
+          </Modal>
+
+          <Modal open={openPair} onClose={()=> setOpenPair(false)} title="兴趣结对">
+            <div className="grid md:grid-cols-2 gap-3">
+              <Field label="我能教"><input id="teach" className="w-full px-3 py-2 rounded-lg border" placeholder="如：书法 / 智能手机 / 摄影构图"/></Field>
+              <Field label="我想学"><input id="learn" className="w-full px-3 py-2 rounded-lg border" placeholder="如：海报设计 / 视频剪辑 / 微信设置"/></Field>
+            </div>
+            <div className="mt-3">
+              <button className="px-3 py-2 rounded-lg bg-emerald-600 text-white" onClick={()=>{
+                const a = document.getElementById('teach').value.trim()||'（未填）';
+                const b = document.getElementById('learn').value.trim()||'（未填）';
+                alert(`推荐结对：你教【${a}】、他/她教【${b}】。本周任务：各准备 1 个小演示 + 15 分钟互评。`);
+              }}>生成结对建议</button>
+            </div>
+            <div className="mt-4 flex justify-end"><button className="px-3 py-2 rounded-lg border" onClick={()=> setOpenPair(false)}>关闭</button></div>
+          </Modal>
+
+          <Modal open={openTask} onClose={()=> setOpenTask(false)} title="每周互教挑战">
+            <div className="rounded-xl border p-4 bg-emerald-50 text-emerald-900 text-sm">本周主题：「我教你拍照，你教我修图」—— 互换 30 分钟，完成 2 张样片与 1 次屏幕共享演示。</div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="px-3 py-2 rounded-lg border" onClick={()=> setOpenTask(false)}>稍后</button>
+              <button className="px-3 py-2 rounded-lg bg-emerald-600 text-white" onClick={()=>{ addPoints(1); setOpenTask(false); }}>我来参加</button>
+            </div>
+          </Modal>
+
+          <Modal open={openSafety} onClose={()=> setOpenSafety(false)} title="线下活动安全须知">
+            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+              <li>活动需实名报名并设置紧急联系人；</li>
+              <li>尽量结伴出行，选择公共场所；</li>
+              <li>不随意转账，谨防诈骗；</li>
+              <li>尊重彼此作息与称呼；</li>
+              <li>活动结束请完成签到与回顾。</li>
+            </ul>
+            <div className="mt-4 flex justify-end"><button className="px-3 py-2 rounded-lg bg-sky-600 text-white" onClick={()=> setOpenSafety(false)}>知道了</button></div>
+          </Modal>
+
+          <Modal open={openClassroom} onClose={()=> setOpenClassroom(false)} title="数字教室 · 高赞沉淀">
+            <div className="grid md:grid-cols-2 gap-3">
+              {(classroom.length ? classroom : posts.filter(p=> (p.type==='lesson' || p.type==='normal') && (p.thanks||0)>=25).map(p=> ({title:p.title, summary:p.body.slice(0,120)+'…', tags:p.tags||[]}))).map((it,idx)=> (
+                <div key={idx} className="rounded-xl border p-3">
+                  <div className="text-sm font-semibold">{it.title}</div>
+                  <div className="mt-1 text-xs text-gray-600">{it.summary}</div>
+                  <div className="mt-2 flex flex-wrap gap-2 text-[11px]">{(it.tags||[]).map((t,i)=> <span key={i} className="px-2 py-0.5 rounded-full bg-gray-100">#{t}</span>)}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-end"><button className="px-3 py-2 rounded-lg border" onClick={()=> setOpenClassroom(false)}>关闭</button></div>
+          </Modal>
+
+          <Modal open={openReport} onClose={()=> setOpenReport(false)} title="举报内容">
+            <div className="grid gap-3">
+              <Field label="原因">
+                <select className="w-full px-3 py-2 rounded-lg border" id="reason">
+                  <option>广告/水贴</option>
+                  <option>辱骂/歧视</option>
+                  <option>诈骗/收费诱导</option>
+                  <option>其它</option>
+                </select>
+              </Field>
+              <Field label="补充（选填）"><textarea className="w-full px-3 py-2 rounded-lg border min-h-[100px]" id="reasonDetail" placeholder="简要说明情况"/></Field>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="px-3 py-2 rounded-lg border" onClick={()=> setOpenReport(false)}>取消</button>
+              <button className="px-3 py-2 rounded-lg bg-gray-900 text-white" onClick={()=>{ setOpenReport(false); alert('已收到举报，我们会尽快处理。感谢守护社区。'); }}>提交</button>
+            </div>
+          </Modal>
+        </div>
+      );
+    }
+
+    // ===== 子组件 =====
+    function InfoCard({ title, content }){
+      return (
+        <div className="p-4 rounded-2xl border bg-white shadow-sm">
+          <div className="text-sm font-semibold">{title}</div>
+          <div className="mt-2 text-xs text-gray-600">{content}</div>
+        </div>
+      );
+    }
+
+    function MiniChat({ sampleCount=3 }){
+      const samples = Array.from({ length: sampleCount }).map((_, i)=> ({ who: i%2===0 ? '长者':'青年', msg: i%2===0 ? '那时候我们…' : '太有意思了，我想学！' }));
+      return (
+        <div className="space-y-2">
+          {samples.map((s,idx)=> (
+            <div key={idx} className={`p-2 rounded-lg ${s.who==='长者' ? 'bg-amber-50 text-gray-800' : 'bg-indigo-50 text-gray-800'}`}>
+              <div className="text-xs font-medium">{s.who}</div>
+              <div className="text-sm">{s.msg}</div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function VoiceButton({ recording, setRecording, recordSec }){
+      return (
+        <div className="flex items-center gap-3">
+          <button onClick={()=> setRecording(r=>!r)} className={`px-3 py-2 rounded-lg flex items-center gap-2 ${recording ? 'bg-red-500 text-white' : 'border'}`}>
+            {recording ? <StopIcon/> : <MicIcon/>}
+            <div className="text-sm">{recording ? '停止录制' : '语音留言'}</div>
+          </button>
+          <div className="text-xs text-gray-500">{recording ? `录制中 ${recordSec}s` : '支持语音+转写'}</div>
+        </div>
+      );
+    }
+
+    function PostCard({ p, thanked, starred, onAction }){
+      const roleBadge = p.role==='senior'
+        ? <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-100">长辈</span>
+        : <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">青年</span>;
+      const typeCls = p.type==='question_card' ? 'border-amber-300 bg-amber-50' : p.type==='lesson' ? 'border-emerald-300 bg-emerald-50' : p.type==='story_audio' ? 'border-violet-300 bg-violet-50' : p.type==='activity' ? 'border-sky-300 bg-sky-50' : 'border-gray-200 bg-white';
+      return (
+        <article className={`rounded-2xl border ${typeCls} p-4 shadow-sm`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gray-100 grid place-items-center text-sm font-semibold">{initials(p.name)}</div>
+              <div>
+                <div className="text-sm font-semibold">{p.name} {roleBadge}</div>
+                <div className="text-xs text-gray-500">{p.title} {p.expert && <span className="ml-2 rounded-full bg-amber-100 text-amber-800 text-[11px] px-1.5">经验之星</span>}</div>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500">· {p.city||'线上'} · {fmtTime(p.time)} · {p.main} / {p.sub}</div>
+          </div>
+          <p className="mt-3 text-sm text-gray-700">{p.body}</p>
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            {(p.tags||[]).map((t,i)=> <span key={i} className="px-2 py-0.5 rounded-full bg-white border">#{t}</span>)}
+            <span className="ml-auto text-[11px] text-indigo-700 px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100">{needMap[p.need]||'交流'}</span>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <button onClick={()=> onAction(p.id,'thank')} disabled={thanked.has(p.id)} className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 ${thanked.has(p.id)?'bg-gray-200 cursor-not-allowed':'bg-gray-900 text-white'}`}>
+              <HeartIcon/> 感谢 <span className="opacity-70">({p.thanks||0})</span>
+            </button>
+            <button onClick={()=> onAction(p.id,'star')} className={`px-3 py-1.5 rounded-lg text-sm border flex items-center gap-1 ${starred.has(p.id)?'bg-yellow-50 border-yellow-200 text-yellow-700':''}`}>
+              <BookmarkIcon/> 收藏 <span className="opacity-60">({p.stars||0})</span>
+            </button>
+            <button className="px-3 py-1.5 rounded-lg text-sm border flex items-center gap-1"><MessageIcon/> 留言</button>
+            <button className="px-3 py-1.5 rounded-lg text-sm border" onClick={()=> alert('建议相互关注后可私信，降低骚扰风险。')}>私信</button>
+            <button className="px-3 py-1.5 rounded-lg text-sm border" onClick={()=> alert('已报名（示意）。如为活动贴将记录你的报名信息。')}>互动</button>
+            <button className="px-3 py-1.5 rounded-lg text-sm border ml-auto" onClick={()=> window.dispatchEvent(new CustomEvent('open-report'))}>举报</button>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {p.type==='question_card' && (<>
+              <button className="px-3 py-1.5 rounded-lg text-sm bg-amber-600 text-white" onClick={()=> onAction(p.id,'want-answer')}>想回答</button>
+              <button className="px-3 py-1.5 rounded-lg text-sm border" onClick={()=> onAction(p.id,'accept')} disabled={p.accepted}>{p.accepted? '已解决':'设为已解决'}</button>
+            </>)}
+            {p.type==='lesson' && (
+              <button className="px-3 py-1.5 rounded-lg text-sm border" onClick={()=> onAction(p.id,'to-classroom')}>沉淀为教程</button>
+            )}
+            {p.type==='activity' && (<>
+              <button className="px-3 py-1.5 rounded-lg text-sm bg-sky-600 text-white" onClick={()=> onAction(p.id,'join')}>{p.joined? '已报名':'报名活动'}</button>
+              <button className="px-3 py-1.5 rounded-lg text-sm border" onClick={()=> onAction(p.id,'checkin')}>签到</button>
+            </>)}
+          </div>
+        </article>
+      );
+    }
+
+    function Field({ label, children }){
+      return (
+        <label className="block">
+          <div className="text-xs text-gray-600 mb-1">{label}</div>
+          {children}
+        </label>
+      );
+    }
+
+    function Modal({ open, onClose, title, children }){
+      useEffect(()=>{
+        if(!open) return; const fn=(e)=>{ if(e.key==='Escape') onClose&&onClose(); }; window.addEventListener('keydown', fn); return ()=> window.removeEventListener('keydown', fn);
+      }, [open]);
+      if(!open) return null;
+      return (
+        <AnimatePresence>
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm grid place-items-center p-4">
+            <motion.div initial={{scale:.96,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:.96,opacity:0}} transition={{type:'spring', stiffness:260, damping:20}} className="w-full max-w-2xl rounded-2xl bg-white shadow-xl border">
+              <div className="p-5 border-b"><div className="text-base font-semibold">{title}</div></div>
+              <div className="p-5">{children}</div>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>
+      );
+    }
+
+    // 挂载
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App/>);
+  </script>
+</body>
+</html>

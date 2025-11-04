@@ -61,7 +61,17 @@
     const FlowerIcon = (p)=> <Ico ch="🌸" {...p}/>;
     const CalendarIcon = (p)=> <Ico ch="📅" {...p}/>;
 
-    // ====== 常量数据 ======
+    const LISTENING_PLACEHOLDER = '正在模拟聆听，请稍候……';
+    const SAMPLE_TRANSCRIPTION = `1978年盛夏，外公重新打开了城南的时光茶馆。第一批客人是住在胡同口的郑奶奶，她带着孙女来找人聊天。年轻志愿者小梁端来新煮的龙井，顺手把留声机里的老歌调小声。郑奶奶慢慢讲起那年插队的故事，孙女在旁边把关键的人名和时间记了下来。等到茶香散尽，故事已经写满三页纸，也成了时光茶馆的第一篇“代际故事”。`;
+    const SAMPLE_DURATION = 56;
+
+    
+    // —— 中译中：默认示例 —— 
+    const CN2CN_ORIG = `哎，我说囡囡，你妈妈昨天又跟我说了，说你昨晚看书又看到后半夜！这怎么行呢？你应该要早点睡觉！身体是革命的本钱，这个道理你都不懂吗？你看你表哥，当年考研就是熬夜把身体搞垮了，最后差点没考上，你必须得吸取教训！`;
+
+    const CN2CN_REWRITE = `囡囡，听说你又熬夜了，我很心疼。我和你爸爸/妈妈最在乎的是你的身体，看你这么辛苦，我们很担心。希望你一定要照顾好自己，好好吃饭，好好休息。我们知道你压力大，也在拼命努力，我们为你骄傲，也为你着急。别怕，我们永远支持你。`;
+
+// ====== 常量数据 ======
     const MAIN_BOARDS = {
       '生活交流区': ['全部','每日闲聊','兴趣角落','怀旧与新潮'],
       '经验分享区': ['全部','职场与人生建议','婚恋与家庭','生活理财小妙招'],
@@ -96,22 +106,34 @@
       {id:'hz20',type:'normal',main:'生活交流区',sub:'每日闲聊',name:'陈年茶',role:'senior',city:'富阳·东梓关',need:'offer_companionship',title:'东梓关古宅半日游，聊聊老房子的风水与格局',body:'从村口慢慢逛到民居群，顺便分享我家老屋的故事。',tags:['富阳','古建','慢游'],thanks:10,stars:3,time:'2025-10-30T10:00:00'},
       {id:'hz21',type:'normal',main:'生活交流区',sub:'怀旧与新潮',name:'江上风',role:'senior',city:'建德·新安江',need:'offer_companionship',title:'“最美跑道”夜游坐船体验分享',body:'冷暖风大不大？船上拍照位置在哪边更稳更好看？',tags:['建德','新安江','夜游'],thanks:6,stars:2,time:'2025-10-29T19:20:00'},
       {id:'hz22',type:'normal',main:'生活交流区',sub:'兴趣角落',name:'小鲁',role:'youth',city:'绍兴·鲁迅故里',need:'offer_companionship',title:'鲁迅故里走读＋黄酒小吃清单',body:'带外婆去坂口安桥、三味书屋，收集几家清淡不咸的馆子。',tags:['绍兴','走读','美食'],thanks:14,stars:6,time:'2025-10-28T11:15:00'},
+
+
+      // ===== 学习互助区 =====
       {id:'hz23',type:'lesson',main:'学习互助区',sub:'数码课堂',name:'南山',role:'youth',city:'杭州·上城',need:'offer_guidance',title:'“浙里办”老年友好设置＋医保结算记录怎么查',body:'字体放大、老年模式、常用服务置顶；医保电子凭证与门诊费用查询示范。',tags:['浙里办','医保','适老化'],thanks:19,stars:8,time:'2025-11-01T15:10:00'},
       {id:'hz24',type:'lesson',main:'学习互助区',sub:'数码课堂',name:'River',role:'youth',city:'杭州·滨江',need:'offer_guidance',title:'地铁乘车码与市民卡绑定到手机钱包（Apple/华为）',body:'演示如何在“市民卡”App里开通并添加到钱包，刷闸更快。',tags:['市民卡','地铁','钱包'],thanks:16,stars:7,time:'2025-10-31T13:00:00'},
       {id:'hz25',type:'lesson',main:'学习互助区',sub:'知识互助',name:'阿渔',role:'youth',city:'杭州·西湖',need:'offer_guidance',title:'安全清理手机内存：不装清理App也能瘦身',body:'相册重复、微信大文件、离线地图与缓存清理的正确打开方式。',tags:['手机','存储','安全'],thanks:21,stars:9,time:'2025-10-30T17:40:00'},
       {id:'hz26',type:'lesson',main:'学习互助区',sub:'知识互助',name:'苏黎',role:'youth',city:'杭州·拱墅',need:'offer_guidance',title:'地图导航“大字＋大声”设置（步行/公交）',body:'高德与百度地图的字号、语音包、无障碍与离线地图设置。',tags:['地图','无障碍','出行'],thanks:13,stars:5,time:'2025-10-29T09:40:00'},
       {id:'hz27',type:'lesson',main:'学习互助区',sub:'数码课堂',name:'小赫',role:'youth',city:'杭州·余杭',need:'offer_guidance',title:'家庭群与紧急位置共享：微信/定位守护',body:'给爸妈的“只提醒重要消息”与紧急共享位置两步到位。',tags:['微信','定位','守护'],thanks:18,stars:8,time:'2025-10-28T20:00:00'},
       {id:'hz28',type:'lesson',main:'学习互助区',sub:'老手艺馆',name:'林匠',role:'senior',city:'杭州·临平',need:'offer_guidance',title:'木作小凳子：不打木钉也能稳（图文）',body:'量材、开榫到打磨，提供适合亲子一起做的“无钉版”。',tags:['木作','手作','亲子'],thanks:24,stars:11,time:'2025-10-27T10:30:00'},
+
+
+      // ===== 经验分享区 =====
       {id:'hz29',type:'normal',main:'经验分享区',sub:'生活理财小妙招',name:'老许',role:'senior',city:'杭州·拱墅',need:'offer_guidance',title:'水电气手机自助缴费与纸质发票保存法',body:'两步拍照存档，月底对账不慌；提醒代缴注意识别官方入口。',tags:['缴费','发票','存档'],thanks:20,stars:8,time:'2025-11-01T11:00:00',expert:true},
       {id:'hz30',type:'normal',main:'经验分享区',sub:'生活理财小妙招',name:'小尤',role:'youth',city:'杭州·滨江',need:'offer_guidance',title:'常见“高收益”陷阱识别：给爸妈看的 5 张图',body:'P2P影子再包装、保本话术、老同学群荐股、陌生客服远程协助等案例。',tags:['反诈','理财','避坑'],thanks:34,stars:15,time:'2025-10-31T18:30:00'},
       {id:'hz31',type:'question_card',main:'经验分享区',sub:'职场与人生建议',name:'重启',role:'senior',city:'杭州·西湖',need:'ask_guidance',title:'50+ 返聘简历怎么写更有竞争力？',body:'经历很多但显得冗长，是否该突出“可兼职”“时间稳定”？',tags:['返聘','简历','职场'],thanks:9,stars:3,time:'2025-10-30T12:10:00',accepted:false},
       {id:'hz32',type:'normal',main:'经验分享区',sub:'生活理财小妙招',name:'Evan',role:'youth',city:'杭州·滨江',need:'offer_guidance',title:'家里网络提速是否值得：200M→500M的真实感受',body:'看电视开机广告、视频会议卡顿、Wi‑Fi覆盖三件套的影响。',tags:['宽带','路由','体验'],thanks:11,stars:5,time:'2025-10-29T21:00:00'},
       {id:'hz33',type:'normal',main:'经验分享区',sub:'职场与人生建议',name:'周行',role:'senior',city:'杭州·上城',need:'offer_guidance',title:'门诊就医 3 步走：分时段挂号、候诊顺序与缴费',body:'陪老伴就医总结的小窍门，特别是“过号处理”和“插队应对”。',tags:['就医','挂号','分时'],thanks:17,stars:7,time:'2025-10-28T08:50:00'},
+
+
+      // ===== 故事与记忆区 =====
       {id:'hz34',type:'story_audio',main:'故事与记忆区',sub:'我的年代',name:'范大伯',role:'senior',city:'杭州·拱宸桥',need:'offer_companionship',title:'运河边的童年（录音）',body:'自动转写片段：木船上的桅灯，照到青石板……',tags:['大运河','童年','录音'],thanks:28,stars:12,time:'2025-10-31T10:20:00',voice:true},
       {id:'hz35',type:'normal',main:'故事与记忆区',sub:'家族记忆',name:'青瓷',role:'youth',city:'杭州·富阳',need:'seek_companionship',title:'外婆的嫁妆木箱：刻字年份有人识得吗？',body:'准备修复，求教木材与保养方法，附老照片。',tags:['家族','木箱','修复'],thanks:14,stars:6,time:'2025-10-30T19:10:00'},
       {id:'hz36',type:'normal',main:'故事与记忆区',sub:'我的年代',name:'老魏',role:'senior',city:'嘉兴',need:'offer_companionship',title:'90年代的网吧：我玩红警的夜晚',body:'谁还记得“计时卡”和CRT的滋滋声？',tags:['网吧','回忆','游戏'],thanks:22,stars:9,time:'2025-10-29T22:30:00'},
       {id:'hz37',type:'normal',main:'故事与记忆区',sub:'家族记忆',name:'白芷',role:'youth',city:'杭州·临安',need:'seek_companionship',title:'千岛湖春游的老合影，能否帮我修旧如旧？',body:'底片不在了，扫描件有裂痕，想请教怎么还原衣服细节。',tags:['老照片','修复','千岛湖'],thanks:18,stars:7,time:'2025-10-28T14:25:00'},
       {id:'hz38',type:'story_audio',main:'故事与记忆区',sub:'我的年代',name:'阿柯',role:'senior',city:'绍兴',need:'offer_companionship',title:'酒坊的清香与号子（录音）',body:'自动转写片段：冬天踩曲最辛苦，手脚都麻……',tags:['绍兴酒','作坊','口述史'],thanks:31,stars:13,time:'2025-10-27T16:05:00',voice:true},
+
+
+      // ===== 共创活动区 =====
       {id:'hz39',type:'activity',main:'共创活动区',sub:'主题共创',name:'运河友邻团',role:'youth',city:'杭州·大运河',need:'offer_companionship',title:'无障碍地图共绘：运河桥下的坡道与盲道',body:'提供贴纸与量尺工具，完成后上传到开放地图。',tags:['无障碍','地图','共创'],thanks:9,stars:4,time:'2025-11-02T09:00:00',joined:false},
       {id:'hz40',type:'activity',main:'共创活动区',sub:'主题共创',name:'口述史小分队',role:'youth',city:'杭州·拱墅',need:'offer_companionship',title:'“老杭州话”采集行动',body:'邀请会说吴语的长辈来教10个地道词，录音存档。',tags:['方言','口述史','存档'],thanks:8,stars:3,time:'2025-11-01T14:00:00',joined:false},
       {id:'hz41',type:'activity',main:'共创活动区',sub:'数字互助日',name:'社区科技志愿队',role:'youth',city:'杭州·上城',need:'offer_guidance',title:'楼道巡回：手机助老＋防诈小测',body:'每户 10 分钟，重点教“陌生来电识别”和“定位共享”。',tags:['防诈','助老','手机'],thanks:12,stars:5,time:'2025-10-31T09:30:00',joined:false},
@@ -148,14 +170,34 @@
       const [openSafety, setOpenSafety] = useState(false);
       const [openClassroom, setOpenClassroom] = useState(false);
       const [openReport, setOpenReport] = useState(false);
+      const [openVoiceModal, setOpenVoiceModal] = useState(false);
 
-      // 发帖表单
+            const [openTranslate, setOpenTranslate] = useState(false);
+// 发帖表单
       const [form, setForm] = useState({ role:'youth', postType:'normal', main:'生活交流区', sub:'每日闲聊', city:'', intent:'ask_guidance', title:'', content:'', tags:'', attachments:[] });
 
       // 语音占位
       const [recording, setRecording] = useState(false);
-      const [recordSec, setRecordSec] = useState(0);
-      useEffect(()=>{ let id=null; if(recording) id=setInterval(()=> setRecordSec(s=>s+1), 1000); return ()=> id&&clearInterval(id); },[recording]);
+      const [recordSec, setRecordSec] = useState(SAMPLE_DURATION);
+      const [voiceTranscription, setVoiceTranscription] = useState(SAMPLE_TRANSCRIPTION);
+      const transcriptionReady = voiceTranscription && voiceTranscription !== LISTENING_PLACEHOLDER;
+
+      useEffect(()=>{
+        if(recording){
+          setVoiceTranscription(LISTENING_PLACEHOLDER);
+          setRecordSec(0);
+          const timer = setInterval(()=> setRecordSec(s=>s+1), 1000);
+          return ()=> clearInterval(timer);
+        }
+        setVoiceTranscription(SAMPLE_TRANSCRIPTION);
+        setRecordSec(SAMPLE_DURATION);
+      }, [recording]);
+
+      useEffect(()=>{
+        if(!openVoiceModal){
+          setRecording(false);
+        }
+      }, [openVoiceModal]);
 
       // 监听自定义举报打开事件
       useEffect(()=>{ const fn = ()=> setOpenReport(true); window.addEventListener('open-report', fn); return ()=> window.removeEventListener('open-report', fn); },[]);
@@ -180,6 +222,15 @@
       }, [myPoints]);
 
       const addPoints = (n)=> setMyPoints(p=> p+n);
+      const closeVoiceModal = ()=>{ setOpenVoiceModal(false); setRecording(false); };
+      const handleInsertTranscription = ()=>{
+        if(!transcriptionReady) return;
+        setForm(prev=> ({
+          ...prev,
+          content: prev.content ? `${prev.content}\n\n${voiceTranscription}` : voiceTranscription,
+        }));
+        addPoints(1);
+      };
 
       const handleAction = (id, action)=> {
         setPosts(prev=>{
@@ -394,8 +445,20 @@
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <VoiceButton recording={recording} setRecording={setRecording} recordSec={recordSec} />
-                    <button className="px-3 py-1.5 rounded-lg border text-sm"><FilterIcon/> 筛选</button>
+                    <VoiceButton
+                      recording={recording}
+                      recordSec={recordSec}
+                      transcriptionReady={transcriptionReady}
+                      onOpen={()=> setOpenVoiceModal(true)}
+                    />
+                    
+                    <button
+                      className="px-3 py-1.5 rounded-lg border text-sm"
+                      onClick={()=> setOpenTranslate(true)}
+                    >
+                      中译中
+                    </button>
+<button className="px-3 py-1.5 rounded-lg border text-sm"><FilterIcon/> 筛选</button>
                   </div>
                 </div>
 
@@ -472,6 +535,60 @@
           <footer className="mt-8 text-center text-sm text-gray-400">© 时光茶馆 示意界面 — 仅为原型设计</footer>
 
           {/* ===== Modals ===== */}
+          <Modal open={openVoiceModal} onClose={closeVoiceModal} title="语音转写助手">
+            <div className="space-y-4">
+              <div>
+                <div className="text-xs text-gray-500 mb-2">转录结果预览（示例）</div>
+                <textarea
+                  readOnly
+                  value={voiceTranscription}
+                  className="w-full min-h-[160px] rounded-lg border bg-slate-50 px-3 py-2 text-sm leading-relaxed"
+                />
+                <p className="mt-1 text-xs text-gray-400">展示预置故事转写内容，仅用于界面演示。</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={()=> setRecording(r=>!r)} type="button" className={`px-3 py-2 rounded-lg flex items-center gap-2 ${recording ? 'bg-red-500 text-white' : 'border'}`}>
+                  {recording ? <StopIcon/> : <MicIcon/>}
+                  <span className="text-sm">{recording ? '停止录音' : '开始录音'}</span>
+                </button>
+                <div className="text-xs text-gray-500">
+                  {recording ? `正在模拟录音 · 第 ${recordSec}s 秒` : (transcriptionReady ? `示例音频约 ${SAMPLE_DURATION} 秒` : '等待生成转写')}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={closeVoiceModal} type="button" className="px-3 py-2 rounded-lg border text-sm">关闭</button>
+                <button onClick={()=>{ handleInsertTranscription(); closeVoiceModal(); }} type="button" className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm" disabled={!transcriptionReady}>插入到正文</button>
+              </div>
+            </div>
+          </Modal>
+
+          <Modal open={openTranslate} onClose={()=> setOpenTranslate(false)} title="中译中 · 语气润色">
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500">少一点说教，多一份真诚。</p>
+              <div className="grid md:grid-cols-2 gap-3">
+                <Field label="原句">
+                  <textarea
+                    defaultValue={CN2CN_ORIG}
+                    className="w-full min-h-[180px] rounded-lg border bg-white px-3 py-2 text-sm leading-relaxed"
+                  />
+                </Field>
+                <Field label="润色后">
+                  <textarea
+                    readOnly
+                    value={CN2CN_REWRITE}
+                    className="w-full min-h-[180px] rounded-lg border bg-slate-50 px-3 py-2 text-sm leading-relaxed"
+                  />
+                </Field>
+              </div>
+              <div className="flex items-center justify-end">
+                <div className="flex gap-2">
+                  <button className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm" type="button">翻译</button>
+                  <button className="px-3 py-2 rounded-lg border text-sm" onClick={()=> setOpenTranslate(false)}>关闭</button>
+                </div>
+              </div>
+            </div>
+          </Modal>
+
           <Modal open={openCompose} onClose={()=> setOpenCompose(false)} title="发布内容">
             <div className="grid gap-3">
               <div className="grid md:grid-cols-2 gap-3">
@@ -534,16 +651,18 @@
                 </Field>
               </div>
 
-              {/* 语音发布占位 */}
+              {/* 语音转写演示 */}
               <div className="rounded-xl border p-3 bg-gray-50">
-                <div className="text-sm font-medium">语音发布（占位）</div>
+                <div className="text-sm font-medium">语音识别占位演示</div>
                 <div className="mt-2 flex items-center gap-3">
-                  <button onClick={()=> setRecording(r=>!r)} type="button" className={`px-3 py-2 rounded-lg flex items-center gap-2 ${recording? 'bg-red-500 text-white':'border'}`}>
+                  <button onClick={()=> setOpenVoiceModal(true)} type="button" className={`px-3 py-2 rounded-lg flex items-center gap-2 ${recording ? 'bg-red-500 text-white' : 'border'}`}>
                     {recording ? <StopIcon/> : <MicIcon/>}
-                    <span className="text-sm">{recording? '停止录音' : '开始录音'}</span>
+                    <span className="text-sm">{recording ? '模拟录音中' : '语音助手'}</span>
                   </button>
-                  <button type="button" disabled={!recordSec} onClick={()=>{ setForm({...form, content: `${form.content}\n（自动转写占位）本段录音约 ${recordSec} 秒：\n1）……\n2）……\n`}); addPoints(1); }} className={`px-3 py-2 rounded-lg text-sm ${recordSec? 'bg-indigo-600 text-white':'border text-gray-400'}`}>自动转写到正文</button>
-                  <div className="text-xs text-gray-500">{recording? `录制中 ${recordSec}s` : (recordSec? `录音完成 ${recordSec}s` : '支持语音+转写')}</div>
+                  <button type="button" disabled={!transcriptionReady} onClick={handleInsertTranscription} className={`px-3 py-2 rounded-lg text-sm ${transcriptionReady ? 'bg-indigo-600 text-white' : 'border text-gray-400'}`}>插入示例转写</button>
+                  <div className="text-xs text-gray-500">
+                    {recording ? `正在录音 · 第 ${recordSec}s 秒` : (transcriptionReady ? `已准备转写（约 ${SAMPLE_DURATION} 秒）` : '支持语音+转写')}
+                  </div>
                 </div>
               </div>
             </div>
@@ -650,14 +769,17 @@
       );
     }
 
-    function VoiceButton({ recording, setRecording, recordSec }){
+    function VoiceButton({ recording, recordSec, transcriptionReady, onOpen }){
+      const status = recording
+        ? `正在录音 · 第 ${recordSec}s 秒`
+        : (transcriptionReady ? '示例转写' : '支持语音+转写');
       return (
         <div className="flex items-center gap-3">
-          <button onClick={()=> setRecording(r=>!r)} className={`px-3 py-2 rounded-lg flex items-center gap-2 ${recording ? 'bg-red-500 text-white' : 'border'}`}>
+          <button onClick={onOpen} className={`px-3 py-2 rounded-lg flex items-center gap-2 ${recording ? 'bg-red-500 text-white' : 'border'}`}>
             {recording ? <StopIcon/> : <MicIcon/>}
-            <div className="text-sm">{recording ? '停止录制' : '语音留言'}</div>
+            <div className="text-sm">{recording ? '模拟录音中' : '语音助手'}</div>
           </button>
-          <div className="text-xs text-gray-500">{recording ? `录制中 ${recordSec}s` : '支持语音+转写'}</div>
+          <div className="text-xs text-gray-500">{status}</div>
         </div>
       );
     }
